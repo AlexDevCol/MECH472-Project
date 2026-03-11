@@ -9,5 +9,6 @@ public:
 	void Draw();
 
 private:
-	// state added in later phases
+	// Convert camera-space (inches, top-right origin) to screen pixels (top-left origin)
+	void CameraToScreen(double x_inches, double y_inches, double& out_x, double& out_y) const;
 };

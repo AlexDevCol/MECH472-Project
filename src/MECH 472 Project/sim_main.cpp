@@ -1,7 +1,7 @@
 // Simulation main — entry point and main loop
 
 #include <Windows.h>
-#include "2D_graphics.h"
+#include "Libraries\2D_graphics.h"
 #include "global_data.h"
 #include "world.h"
 

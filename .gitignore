@@ -1,2 +1,9 @@
 # Docs inside agent folder (local/private agent context)
 docs/agent/
+
+# MECH 472 Project — compiler / build output
+src/MECH 472 Project/x64/
+src/MECH 472 Project/.vs/
+src/MECH 472 Project/MECH 472 Project/
+src/MECH 472 Project/Debug/
+src/MECH 472 Project/Release/

@@ -1,0 +1,6 @@
+window width (use screen width for full-screen mode):
+720
+window height (use screen height for full-screen mode):
+720
+use border (1 - yes, 0 - no) (use 0 for full-screen mode):
+1

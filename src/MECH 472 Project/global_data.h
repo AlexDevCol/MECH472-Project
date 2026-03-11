@@ -13,3 +13,6 @@
 
 // Scale: pixels per inch (world is in inches)
 #define PixelsPerInch  (WindowWidth / WorldWidthInches)
+
+// Obstacles: fixed array size (no STL)
+#define N_OBSTACLES_MAX  20

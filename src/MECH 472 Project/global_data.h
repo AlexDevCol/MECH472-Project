@@ -16,3 +16,13 @@
 
 // Obstacles: fixed array size (no STL)
 #define N_OBSTACLES_MAX  20
+
+// Robot body and turret (inches)
+#define RobotBodyLengthInches  12
+#define RobotBodyWidthInches   7
+// Turret circle at most 1/3 of body width (7/3 ~ 2.33)
+#define TurretCircleRadiusInches  2.0
+// Laser line length (extends beyond body to simulate laser)
+#define LaserLineLengthInches  72
+// Robot radius for spawn rejection (obstacle overlap check)
+#define RobotRadiusInches  6

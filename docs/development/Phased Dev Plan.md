@@ -69,11 +69,14 @@ Aligned with [docs/development/PRD and TDD.md](docs/development/PRD and TDD.md) 
 
 **Deliverables:**
 
-- Two robot entities: Attacker and Defender. Each has X, Y, \theta_{chassis}, \theta_{laser} (in camera space). Store in `world` (e.g. structs or minimal classes, no STL).
-- World ctor: set initial positions and thetas so both are on-screen and distinct.
-- In `world::Draw()`: for each robot, draw chassis (e.g. circle or short line for heading) and laser turret (e.g. line or segment in direction \theta_{laser}). Use the same camera→screen transform.
+- **Robot in own files:** `robot.h` and `robot.cpp` define `struct robot` (X, Y, \theta_{chassis}, \theta_{laser}, `laserOn`) and `Draw(robot const& r, world const& w, bool isAttacker)`. World owns Attacker and Defender; `world::Draw()` calls `Draw(Attacker, *this, true)` and `Draw(Defender, *this, false)`. World exposes `CameraToScreen` (public) so robot drawing can transform coordinates.
+- Two robot entities: Attacker and Defender. Each has X, Y, \theta_{chassis}, \theta_{laser}, and **laserOn** (attack mode = true → draw laser; defense mode = false → laser off, no laser line). Store in `world`; no STL.
+- World ctor: set initial positions and thetas; set Attacker.laserOn = true, Defender.laserOn = false.
+- In `robot.cpp` `Draw()`: for each robot:
+  - **Chassis:** Filled rectangle **12 in (length) × 7 in (width)** in camera space, centered at robot (X, Y), rotated by \theta_{chassis}. Draw the quad as **two triangles** using `triangle()`. Use world’s `CameraToScreen` and pixel scale (720 window = 6 ft ⇒ 10 px/inch).
+  - **Turret:** A **circle** at the robot center (outline via `line()` loop); radius **at most 1/3 of body width** (e.g. 2 in). **Laser line** only when `laserOn` is true: a segment in direction \theta_{laser} extending **way beyond the body** (e.g. `LaserLineLengthInches` = 72 in) to simulate the laser. Defender does not draw the laser.
 
-**Test:** Launch app → see two robots with distinguishable chassis and turret direction.
+**Test:** Launch app → see two robots (Attacker with extended laser line, Defender without); chassis filled rectangles; turret circles small; orientations visible.
 
 ---
 

@@ -23,9 +23,12 @@ A **2D simulation** (not a game) that models the autonomous logic for a differen
 |-------|--------|----------------|
 | **1** | Done | Minimal runnable shell: `sim_main.cpp`, `world` class, `global_data.h`, main loop `clear()` → `Update()` → `Draw()` → exit on Escape. Project uses 2D graphics lib from `LIbraries/`, Win32 only, static CRT. |
 | **2** | Done | 6 ft × 6 ft battlefield (72 × 72 inches). Camera→screen transform (`CameraToScreen`). Field border and 1 ft grid. Window 720×720 px (10 px/inch). See [DirectX_Window_Size.md](DirectX_Window_Size.md). |
-| **3** | Done | Obstacles: `struct obstacle` (X, Y, R in inches, `isActive`). Fixed array `Obstacles[N_OBSTACLES_MAX]`. Eight obstacles drawn as circles via `line()` with camera→screen transform. |
+| **3** | Done | Obstacles: `struct obstacle` (X, Y, R in inches, `isActive`). Fixed array `Obstacles[N_OBSTACLES_MAX]`. Five obstacles drawn as circles via `line()` with camera→screen transform. |
+| **4** | Done | Robots in `robot.h` / `robot.cpp`: `struct robot` (X, Y, theta_chassis, theta_laser, **laserOn**). Body = 12"×7" filled rectangle (two `triangle()` calls). Turret circle ≤ 1/3 body width; laser line only when `laserOn` (attack mode), extended way beyond body. Defender has laser off. `Draw(robot, world, isAttacker)`; world exposes `CameraToScreen`. |
+| **5** | Done | Q key shuffle: `world::Shuffle()` repositions all active obstacles and both robots. `srand()` in world ctor; `rand()` in Shuffle. Obstacles avoid overlap; robots avoid obstacles and each other (`RobotRadiusInches`). One-shot key handling in `sim_main.cpp` (Q edge triggers one shuffle). |
+| **6** | Done | Line of Sight: ray–circle LoS from Attacker to Defender. In `Update()` compute `los_clear` (closest point on segment to each obstacle center; if distance < R, blocked). In `Draw()` draw segment Attacker→Defender: green if clear, red if blocked. |
 
-**Next:** Phase 4 (robots draw-only), then Phase 5 (Q = shuffle).
+**Next:** Phase 7 (Attacker logic).
 
 ---
 
@@ -53,7 +56,8 @@ A **2D simulation** (not a game) that models the autonomous logic for a differen
 - **Pattern:** Single `world` class; flat source layout; frame order `clear()` → `World.Update(dt)` → `World.Draw()` → input/exit → `update()`.
 - **Naming (AI_REFERENCE):** Class names `snake_case` (e.g. `world`), methods `PascalCase` (e.g. `Update`, `Draw`). Constants in `global_data.h`.
 - **Memory:** Fixed-size arrays; `isActive` to enable/disable entities. No dynamic allocation of entities in the loop; world owns all and deletes only in destructor.
-- **Graphics API:** Use only what’s in `2D_graphics.h` (`clear`, `update`, `line`, `text`, `create_sprite`, `draw_sprite`, `KEY`). Do not modify `2D_graphics.h`.
+- **Graphics API:** Use only what’s in `2D_graphics.h` (`clear`, `update`, `line`, `triangle`, `text`, `create_sprite`, `draw_sprite`, `KEY`). Do not modify `2D_graphics.h`.
+- **Robot mode:** `robot.laserOn` true = attack mode (draw laser, later triggers aim/target logic); false = defense mode (no laser drawn, different logic).
 
 ### 3.4 Input
 
@@ -67,8 +71,9 @@ A **2D simulation** (not a game) that models the autonomous logic for a differen
 ```
 src/MECH 472 Project/
   sim_main.cpp       — entry point, main loop
-  world.cpp / world.h — world class, CameraToScreen, obstacles, draw
-  global_data.h      — WindowWidth/Height, World*Inches, PixelsPerInch, N_OBSTACLES_MAX
+  world.cpp / world.h — world class, CameraToScreen (public), obstacles, Attacker/Defender, draw
+  robot.cpp / robot.h — robot struct, Draw(robot, world, isAttacker); body, turret circle, laser line if laserOn
+  global_data.h      — WindowWidth/Height, World*Inches, PixelsPerInch, N_OBSTACLES_MAX, robot/turret/laser constants
   LIbraries/
     2D_graphics.h
     2D_graphics_ver1.lib
@@ -84,7 +89,7 @@ Build output: `Debug/MECH 472 Project.exe` (or `Release/`). Compiler artifacts (
 2. Start **DirectX_window.exe**.
 3. Build **MECH 472 Project** (Debug or Release, **Win32**).
 4. Run **MECH 472 Project.exe**.
-5. You should see: 6 ft×6 ft field, grid every 1 ft, 8 orange obstacle circles. Press **Escape** to exit.
+5. You should see: 6 ft×6 ft field, grid every 1 ft, 5 orange obstacle circles, two robots (Attacker with extended red laser line, Defender without laser). Press **Escape** to exit.
 
 ---
 

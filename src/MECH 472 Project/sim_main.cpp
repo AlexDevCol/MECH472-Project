@@ -11,13 +11,17 @@ int main() {
 	initialize_graphics();
 	world World;
 
+	static bool prevQ = false;
 	while (1) {
 		clear();
 		World.Update(dt);
 		World.Draw();
 
-		// Q = shuffle (no action in Phase 1)
-		(void)KEY('Q');
+		// Q = shuffle (one-shot: only on key press edge)
+		bool q = (KEY('Q') != 0);
+		if (q && !prevQ)
+			World.Shuffle();
+		prevQ = q;
 		// Exit on Escape
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
 			return 0;

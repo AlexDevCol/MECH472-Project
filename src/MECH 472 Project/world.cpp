@@ -12,7 +12,7 @@
 #endif
 
 world::world() {
-	N_obstacles = 8;
+	N_obstacles = 5;
 	// Fixed initial positions (inches) and radii — all active for Phase 3
 	Obstacles[0].X = 18;  Obstacles[0].Y = 18;  Obstacles[0].R = 4;  Obstacles[0].isActive = true;
 	Obstacles[1].X = 54;  Obstacles[1].Y = 24;  Obstacles[1].R = 5;  Obstacles[1].isActive = true;
@@ -37,6 +37,7 @@ world::world() {
 	Defender.theta_laser = -0.75 * M_PI;
 	Defender.laserOn = false;   // defense mode: laser off, do not draw
 	los_clear = true;
+	blocking_obstacle_index = -1;
 	// Use same shuffle logic so initial layout has no robot–obstacle overlap
 	Shuffle();
 }
@@ -138,6 +139,7 @@ void world::Update(double dt) {
 	double dot_AB = abx * abx + aby * aby;
 	const double eps = 1e-6;
 	los_clear = true;
+	blocking_obstacle_index = -1;
 	if (dot_AB < eps) {
 		// Segment degenerate (same point); no obstacle can block
 		return;
@@ -153,7 +155,8 @@ void world::Update(double dt) {
 		double dqx = ox - qx, dqy = oy - qy;
 		if (dqx * dqx + dqy * dqy < R * R) {
 			los_clear = false;
-			return;
+			blocking_obstacle_index = i;
+			break;
 		}
 	}
 	// Phase 7: Attacker target = Defender (LoS clear or blocked; APF in Phase 9 uses this)
@@ -170,6 +173,230 @@ void world::Update(double dt) {
 	Attacker.theta_chassis += step;
 	while (Attacker.theta_chassis > M_PI) Attacker.theta_chassis -= 2.0 * M_PI;
 	while (Attacker.theta_chassis < -M_PI) Attacker.theta_chassis += 2.0 * M_PI;
+
+	// Phase 8: Defender target = shadow point behind an obstacle (from Attacker)
+	double best_sx = Defender.X, best_sy = Defender.Y;
+	double best_dist_sq = 1e30;
+	bool have_valid = false;
+	// Option B: prefer blocking obstacle's shadow if valid
+	if (blocking_obstacle_index >= 0 && Obstacles[blocking_obstacle_index].isActive) {
+		int i = blocking_obstacle_index;
+		double ox = Obstacles[i].X, oy = Obstacles[i].Y, R = Obstacles[i].R;
+		double vx = ox - ax, vy = oy - ay;
+		double len = sqrt(vx * vx + vy * vy);
+		if (len >= eps) {
+			vx /= len;
+			vy /= len;
+			double ext = R + RobotRadiusInches + ShadowBufferInches;
+			double sx = ox + ext * vx, sy = oy + ext * vy;
+			if (sx >= 0.0 && sx <= WorldWidthInches && sy >= 0.0 && sy <= WorldHeightInches) {
+				best_sx = sx;
+				best_sy = sy;
+				have_valid = true;
+			}
+		}
+	}
+	if (!have_valid) {
+		for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+			if (!Obstacles[i].isActive) continue;
+			double ox = Obstacles[i].X, oy = Obstacles[i].Y, R = Obstacles[i].R;
+			double vx = ox - ax, vy = oy - ay;
+			double len = sqrt(vx * vx + vy * vy);
+			if (len < eps) continue;
+			vx /= len;
+			vy /= len;
+			double ext = R + RobotRadiusInches + ShadowBufferInches;
+			double sx = ox + ext * vx, sy = oy + ext * vy;
+			if (sx < 0.0 || sx > WorldWidthInches || sy < 0.0 || sy > WorldHeightInches) continue;
+			double ddx = sx - Defender.X, ddy = sy - Defender.Y;
+			double dist_sq = ddx * ddx + ddy * ddy;
+			if (dist_sq < best_dist_sq) {
+				best_dist_sq = dist_sq;
+				best_sx = sx;
+				best_sy = sy;
+				have_valid = true;
+			}
+		}
+	}
+	if (!have_valid) {
+		best_sx = Defender.X;
+		best_sy = Defender.Y;
+	}
+	Defender.target_x = best_sx;
+	Defender.target_y = best_sy;
+	// Step Defender chassis toward shadow target
+	double target_chassis_d = atan2(Defender.target_y - Defender.Y, Defender.target_x - Defender.X);
+	double diff_d = target_chassis_d - Defender.theta_chassis;
+	while (diff_d > M_PI) diff_d -= 2.0 * M_PI;
+	while (diff_d < -M_PI) diff_d += 2.0 * M_PI;
+	double step_d = diff_d;
+	if (step_d > ChassisTurnRateRadPerFrame) step_d = ChassisTurnRateRadPerFrame;
+	if (step_d < -ChassisTurnRateRadPerFrame) step_d = -ChassisTurnRateRadPerFrame;
+	Defender.theta_chassis += step_d;
+	while (Defender.theta_chassis > M_PI) Defender.theta_chassis -= 2.0 * M_PI;
+	while (Defender.theta_chassis < -M_PI) Defender.theta_chassis += 2.0 * M_PI;
+
+	// Phase 9: APF pathfinding — move both robots toward targets with obstacle avoidance
+	const double min_d = 0.5;  // avoid div by zero in repulsion
+	const double min_force = 1e-3;  // skip move when total force negligible (avoid jitter)
+	// Attacker: APF toward Defender (target already set)
+	{
+		double rx = Attacker.X, ry = Attacker.Y;
+		double tx = Attacker.target_x, ty = Attacker.target_y;
+		double fax = tx - rx, fay = ty - ry;
+		double dist_att = sqrt(fax * fax + fay * fay);
+		if (dist_att > eps) {
+			fax /= dist_att;
+			fay /= dist_att;
+		} else {
+			fax = fay = 0.0;
+		}
+		double fx = fax, fy = fay;
+		for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+			if (!Obstacles[i].isActive) continue;
+			double ox = Obstacles[i].X, oy = Obstacles[i].Y, R = Obstacles[i].R;
+			double d_safe = R + RobotRadiusInches + APFSafetyMarginInches;
+			double dx = rx - ox, dy = ry - oy;
+			double d = sqrt(dx * dx + dy * dy);
+			if (d < min_d) d = min_d;
+			if (d < d_safe) {
+				double mag = APFRepulsiveGain * (1.0 / d - 1.0 / d_safe);
+				if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+				fx += mag * (dx / d);
+				fy += mag * (dy / d);
+			}
+		}
+		// Robot-robot repulsion: Attacker repelled by Defender
+		double adx = rx - Defender.X, ady = ry - Defender.Y;
+		double d_robot = sqrt(adx * adx + ady * ady);
+		if (d_robot < min_d) d_robot = min_d;
+		if (d_robot < RobotRobotRepelDistInches) {
+			double mag = APFRepulsiveGain * (1.0 / d_robot - 1.0 / RobotRobotRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fx += mag * (adx / d_robot);
+			fy += mag * (ady / d_robot);
+		}
+		double f_len = sqrt(fx * fx + fy * fy);
+		if (f_len > min_force) {
+			double step = RobotSpeedInchesPerFrame;
+			if (dist_att > eps && dist_att < step) step = dist_att;
+			double new_ax = rx + (fx / f_len) * step;
+			double new_ay = ry + (fy / f_len) * step;
+			bool would_penetrate = false;
+			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+				if (!Obstacles[i].isActive) continue;
+				double odx = new_ax - Obstacles[i].X, ody = new_ay - Obstacles[i].Y;
+				double od = sqrt(odx * odx + ody * ody);
+				if (od < Obstacles[i].R + RobotRadiusInches) {
+					would_penetrate = true;
+					break;
+				}
+			}
+			if (!would_penetrate) {
+				Attacker.X = new_ax;
+				Attacker.Y = new_ay;
+			}
+		} else if (dist_att > eps && dist_att <= RobotSpeedInchesPerFrame) {
+			double new_ax = tx, new_ay = ty;
+			bool would_penetrate = false;
+			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+				if (!Obstacles[i].isActive) continue;
+				double odx = new_ax - Obstacles[i].X, ody = new_ay - Obstacles[i].Y;
+				double od = sqrt(odx * odx + ody * ody);
+				if (od < Obstacles[i].R + RobotRadiusInches) {
+					would_penetrate = true;
+					break;
+				}
+			}
+			if (!would_penetrate) {
+				Attacker.X = new_ax;
+				Attacker.Y = new_ay;
+			}
+		}
+		if (Attacker.X < 0.0) Attacker.X = 0.0;
+		if (Attacker.X > WorldWidthInches) Attacker.X = WorldWidthInches;
+		if (Attacker.Y < 0.0) Attacker.Y = 0.0;
+		if (Attacker.Y > WorldHeightInches) Attacker.Y = WorldHeightInches;
+	}
+	// Defender: APF toward shadow target
+	{
+		double rx = Defender.X, ry = Defender.Y;
+		double tx = Defender.target_x, ty = Defender.target_y;
+		double fax = tx - rx, fay = ty - ry;
+		double dist_att = sqrt(fax * fax + fay * fay);
+		if (dist_att > eps) {
+			fax /= dist_att;
+			fay /= dist_att;
+		} else {
+			fax = fay = 0.0;
+		}
+		double fx = fax, fy = fay;
+		for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+			if (!Obstacles[i].isActive) continue;
+			double ox = Obstacles[i].X, oy = Obstacles[i].Y, R = Obstacles[i].R;
+			double d_safe = R + RobotRadiusInches + APFSafetyMarginInches;
+			double dx = rx - ox, dy = ry - oy;
+			double d = sqrt(dx * dx + dy * dy);
+			if (d < min_d) d = min_d;
+			if (d < d_safe) {
+				double mag = APFRepulsiveGain * (1.0 / d - 1.0 / d_safe);
+				if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+				fx += mag * (dx / d);
+				fy += mag * (dy / d);
+			}
+		}
+		// Robot-robot repulsion: Defender repelled by Attacker
+		double dax = rx - Attacker.X, day = ry - Attacker.Y;
+		double d_robot = sqrt(dax * dax + day * day);
+		if (d_robot < min_d) d_robot = min_d;
+		if (d_robot < RobotRobotRepelDistInches) {
+			double mag = APFRepulsiveGain * (1.0 / d_robot - 1.0 / RobotRobotRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fx += mag * (dax / d_robot);
+			fy += mag * (day / d_robot);
+		}
+		double f_len = sqrt(fx * fx + fy * fy);
+		if (f_len > min_force) {
+			double step = RobotSpeedInchesPerFrame;
+			if (dist_att > eps && dist_att < step) step = dist_att;
+			double new_dx = rx + (fx / f_len) * step;
+			double new_dy = ry + (fy / f_len) * step;
+			bool would_penetrate = false;
+			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+				if (!Obstacles[i].isActive) continue;
+				double odx = new_dx - Obstacles[i].X, ody = new_dy - Obstacles[i].Y;
+				double od = sqrt(odx * odx + ody * ody);
+				if (od < Obstacles[i].R + RobotRadiusInches) {
+					would_penetrate = true;
+					break;
+				}
+			}
+			if (!would_penetrate) {
+				Defender.X = new_dx;
+				Defender.Y = new_dy;
+			}
+		} else if (dist_att > eps && dist_att <= RobotSpeedInchesPerFrame) {
+			double new_dx = tx, new_dy = ty;
+			bool would_penetrate = false;
+			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+				if (!Obstacles[i].isActive) continue;
+				double odx = new_dx - Obstacles[i].X, ody = new_dy - Obstacles[i].Y;
+				double od = sqrt(odx * odx + ody * ody);
+				if (od < Obstacles[i].R + RobotRadiusInches) {
+					would_penetrate = true;
+					break;
+				}
+			}
+			if (!would_penetrate) {
+				Defender.X = new_dx;
+				Defender.Y = new_dy;
+			}
+		}
+		if (Defender.X < 0.0) Defender.X = 0.0;
+		if (Defender.X > WorldWidthInches) Defender.X = WorldWidthInches;
+		if (Defender.Y < 0.0) Defender.Y = 0.0;
+		if (Defender.Y > WorldHeightInches) Defender.Y = WorldHeightInches;
+	}
 }
 
 void world::Draw() {
@@ -224,4 +451,17 @@ void world::Draw() {
 		line(lx, ly, 2, 0.0, 0.8, 0.0);
 	else
 		line(lx, ly, 2, 0.9, 0.0, 0.0);
+
+	// Phase 8: debug marker at Defender's shadow target (cyan)
+	const int marker_segs = 16;
+	const double marker_radius_inches = 2.0;
+	double mx[marker_segs + 1], my[marker_segs + 1];
+	double tx = Defender.target_x, ty = Defender.target_y;
+	for (int s = 0; s <= marker_segs; s++) {
+		double a = (double)s / (double)marker_segs * 2.0 * M_PI;
+		double px = tx + marker_radius_inches * cos(a);
+		double py = ty + marker_radius_inches * sin(a);
+		CameraToScreen(px, py, mx[s], my[s]);
+	}
+	line(mx, my, marker_segs + 1, 0.0, 0.8, 0.8);
 }

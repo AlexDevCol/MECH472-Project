@@ -15,7 +15,7 @@
 #define PixelsPerInch  (WindowWidth / WorldWidthInches)
 
 // Obstacles: fixed array size (no STL)
-#define N_OBSTACLES_MAX  20
+#define N_OBSTACLES_MAX  8
 
 // Robot body and turret (inches)
 #define RobotBodyLengthInches  12
@@ -31,3 +31,11 @@
 #define TurretHalfRangeDeg  90
 // Phase 7: max chassis turn per frame (rad) when stepping toward target
 #define ChassisTurnRateRadPerFrame  0.06
+// Phase 8: buffer (inches) for Defender shadow point behind obstacle (obstacle R + robot R + buffer)
+#define ShadowBufferInches  3
+// Phase 9: APF pathfinding and motion
+#define APFRepulsiveGain       80.0   // repulsive force scale
+#define APFSafetyMarginInches  6.0    // extra margin beyond obstacle R + robot R for repulsion influence
+#define RobotSpeedInchesPerFrame  0.18  // movement step per frame (dt not used); reduced to avoid vibration
+#define MaxRepulsiveForce      15.0   // cap per-obstacle/robot repulsion magnitude to prevent vibration
+#define RobotRobotRepelDistInches  14.0  // distance below which Attacker and Defender repel each other

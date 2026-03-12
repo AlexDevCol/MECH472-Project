@@ -28,4 +28,5 @@ private:
 	robot Attacker;
 	robot Defender;
 	bool los_clear;   // Phase 6: true if no obstacle blocks Attacker–Defender segment
+	int blocking_obstacle_index;  // Phase 8: index of obstacle blocking LoS, or -1 if clear
 };

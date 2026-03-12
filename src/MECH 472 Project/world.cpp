@@ -96,8 +96,12 @@ void world::Shuffle() {
 			Defender.Y = dy;
 			Attacker.theta_chassis = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
 			Attacker.theta_laser = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
+			Attacker.target_x = dx;
+			Attacker.target_y = dy;
 			Defender.theta_chassis = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
 			Defender.theta_laser = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
+			Defender.target_x = dx;
+			Defender.target_y = dy;
 			break;
 		}
 	}
@@ -118,8 +122,15 @@ void world::CameraToScreen(double x_inches, double y_inches, double& out_x, doub
 
 void world::Update(double dt) {
 	(void)dt;
-	// Aim Attacker's turret at Defender so the yellow line = "laser aim" matches LoS direction
-	Attacker.theta_laser = atan2(Defender.Y - Attacker.Y, Defender.X - Attacker.X);
+	// Aim Attacker's turret at Defender; clamp to 0..180 deg (90 = forward) relative to chassis
+	double desired_world = atan2(Defender.Y - Attacker.Y, Defender.X - Attacker.X);
+	double rel_rad = desired_world - Attacker.theta_chassis;
+	while (rel_rad > M_PI) rel_rad -= 2.0 * M_PI;
+	while (rel_rad < -M_PI) rel_rad += 2.0 * M_PI;
+	double rel_deg = rel_rad * (180.0 / M_PI);
+	if (rel_deg < -TurretHalfRangeDeg) rel_deg = -TurretHalfRangeDeg;
+	if (rel_deg > TurretHalfRangeDeg) rel_deg = TurretHalfRangeDeg;
+	Attacker.theta_laser = Attacker.theta_chassis + rel_deg * (M_PI / 180.0);
 	// Phase 6: ray–circle LoS from Attacker to Defender
 	double ax = Attacker.X, ay = Attacker.Y;
 	double dx = Defender.X, dy = Defender.Y;
@@ -145,6 +156,20 @@ void world::Update(double dt) {
 			return;
 		}
 	}
+	// Phase 7: Attacker target = Defender (LoS clear or blocked; APF in Phase 9 uses this)
+	Attacker.target_x = Defender.X;
+	Attacker.target_y = Defender.Y;
+	// Step chassis toward target for visible feedback
+	double target_chassis = atan2(Attacker.target_y - Attacker.Y, Attacker.target_x - Attacker.X);
+	double diff = target_chassis - Attacker.theta_chassis;
+	while (diff > M_PI) diff -= 2.0 * M_PI;
+	while (diff < -M_PI) diff += 2.0 * M_PI;
+	double step = diff;
+	if (step > ChassisTurnRateRadPerFrame) step = ChassisTurnRateRadPerFrame;
+	if (step < -ChassisTurnRateRadPerFrame) step = -ChassisTurnRateRadPerFrame;
+	Attacker.theta_chassis += step;
+	while (Attacker.theta_chassis > M_PI) Attacker.theta_chassis -= 2.0 * M_PI;
+	while (Attacker.theta_chassis < -M_PI) Attacker.theta_chassis += 2.0 * M_PI;
 }
 
 void world::Draw() {

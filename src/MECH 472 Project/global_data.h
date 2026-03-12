@@ -26,3 +26,8 @@
 #define LaserLineLengthInches  72
 // Robot radius for spawn rejection (obstacle overlap check)
 #define RobotRadiusInches  6
+// Turret limit: 0..180 deg relative to chassis, 90 deg = straight forward; ±90 deg each side
+#define TurretForwardDeg  90
+#define TurretHalfRangeDeg  90
+// Phase 7: max chassis turn per frame (rad) when stepping toward target
+#define ChassisTurnRateRadPerFrame  0.06

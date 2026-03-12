@@ -115,15 +115,17 @@ Aligned with [docs/development/PRD and TDD.md](docs/development/PRD and TDD.md) 
 
 **Goal:** Attacker’s chassis and laser aim at Defender when LoS is clear; target stored for later APF.
 
+**Turret limit (pre-implemented):** Turret angle is limited to **0°–180°** relative to chassis, with **90° = straight forward** (chassis heading). So the laser can only aim from 90° left to 90° right of forward. When computing target aim, clamp the desired angle to this range (see `TurretHalfRangeDeg` in `global_data.h`).
+
 **Deliverables:**
 
 - In `world::Update(dt)`: Attacker mode:
   - Target position = Defender (X,Y).
-  - If LoS clear: set Attacker’s `Target_laser_theta` = angle from Attacker to Defender; set `Target_chassis_theta` (and/or target X,Y) toward Defender for later use.
+  - If LoS clear: set Attacker’s laser aim toward Defender (already done; respect turret limit so \theta_{laser} stays within ±90° of \theta_{chassis}). Set `Target_chassis_theta` (and/or target X,Y) toward Defender for later use.
   - If LoS blocked: set target to “move around obstacle” (e.g. still Defender position; APF in Phase 9 will handle repulsion).
-- Optionally: smooth or step Attacker’s \theta_{laser} and \theta_{chassis} toward these targets for visible feedback (no full motion yet).
+- Optionally: smooth or step Attacker’s \theta_{chassis} toward target for visible feedback (no full motion yet). Turret \theta_{laser} already follows Defender within limit.
 
-**Test:** Launch app → with clear LoS, Attacker’s turret and chassis point toward Defender; after shuffle to blocked LoS, target still Defender (pathfinding in Phase 9).
+**Test:** Launch app → with clear LoS, Attacker’s turret (within limit) and chassis point toward Defender; if Defender is outside turret range, turret clamps to nearest limit. After shuffle to blocked LoS, target still Defender (pathfinding in Phase 9).
 
 ---
 

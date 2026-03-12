@@ -11,6 +11,9 @@ struct robot {
 	double theta_chassis;  // radians
 	double theta_laser;    // radians
 	bool laserOn;         // true = attack mode (draw laser), false = defense (no laser)
+	// Phase 7 / APF: target position (inches); Attacker → Defender, Defender → shadow in Phase 8
+	double target_x;
+	double target_y;
 };
 
 class world;

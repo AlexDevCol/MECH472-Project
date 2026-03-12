@@ -43,17 +43,38 @@ world::world() {
 }
 
 void world::Shuffle() {
-	// Reposition all active obstacles; avoid obstacle–obstacle overlap
-	for (int i = 0; i < N_OBSTACLES_MAX; i++) {
+	// Visualize logic: robots on opposite corners, one obstacle directly between them (LoS blocked for Defender)
+	const double margin = RobotRadiusInches;
+	// Attacker at one corner (top-right in camera space)
+	Attacker.X = margin;
+	Attacker.Y = margin;
+	// Defender at opposite corner (bottom-left)
+	Defender.X = WorldWidthInches - margin;
+	Defender.Y = WorldHeightInches - margin;
+	// One obstacle directly between them (midpoint of segment) so Defender has cover
+	Obstacles[0].X = (Attacker.X + Defender.X) * 0.5;
+	Obstacles[0].Y = (Attacker.Y + Defender.Y) * 0.5;
+	Obstacles[0].R = 5.0;
+	Obstacles[0].isActive = true;
+	// Remaining obstacles: random positions, avoid obstacle 0 and both robots
+	for (int i = 1; i < N_OBSTACLES_MAX; i++) {
 		if (!Obstacles[i].isActive) continue;
 		double R = Obstacles[i].R;
-		const double margin = R;
+		const double obs_margin = R;
 		const int max_tries = 50;
 		for (int t = 0; t < max_tries; t++) {
-			double nx = margin + (double)rand() / (double)RAND_MAX * (WorldWidthInches - 2.0 * margin);
-			double ny = margin + (double)rand() / (double)RAND_MAX * (WorldHeightInches - 2.0 * margin);
+			double nx = obs_margin + (double)rand() / (double)RAND_MAX * (WorldWidthInches - 2.0 * obs_margin);
+			double ny = obs_margin + (double)rand() / (double)RAND_MAX * (WorldHeightInches - 2.0 * obs_margin);
 			bool ok = true;
-			for (int j = 0; j < N_OBSTACLES_MAX; j++) {
+			// Avoid obstacle 0 (the one between robots)
+			double d0x = nx - Obstacles[0].X, d0y = ny - Obstacles[0].Y;
+			if (d0x * d0x + d0y * d0y < (R + Obstacles[0].R) * (R + Obstacles[0].R)) ok = false;
+			// Avoid Attacker and Defender
+			double dax = nx - Attacker.X, day = ny - Attacker.Y;
+			if (dax * dax + day * day < (R + RobotRadiusInches) * (R + RobotRadiusInches)) ok = false;
+			double ddx = nx - Defender.X, ddy = ny - Defender.Y;
+			if (ddx * ddx + ddy * ddy < (R + RobotRadiusInches) * (R + RobotRadiusInches)) ok = false;
+			for (int j = 1; j < N_OBSTACLES_MAX; j++) {
 				if (j == i || !Obstacles[j].isActive) continue;
 				double dx = nx - Obstacles[j].X, dy = ny - Obstacles[j].Y;
 				if (dx * dx + dy * dy < (R + Obstacles[j].R) * (R + Obstacles[j].R)) {
@@ -68,44 +89,15 @@ void world::Shuffle() {
 			}
 		}
 	}
-	// Reposition Attacker and Defender; avoid spawning inside obstacles
-	const double margin = RobotRadiusInches;
-	const int max_tries = 80;
-	for (int t = 0; t < max_tries; t++) {
-		double ax = margin + (double)rand() / (double)RAND_MAX * (WorldWidthInches - 2.0 * margin);
-		double ay = margin + (double)rand() / (double)RAND_MAX * (WorldHeightInches - 2.0 * margin);
-		double dx = margin + (double)rand() / (double)RAND_MAX * (WorldWidthInches - 2.0 * margin);
-		double dy = margin + (double)rand() / (double)RAND_MAX * (WorldHeightInches - 2.0 * margin);
-		bool a_ok = true, d_ok = true;
-		for (int i = 0; i < N_OBSTACLES_MAX; i++) {
-			if (!Obstacles[i].isActive) continue;
-			double oR = Obstacles[i].R;
-			double minDist = oR + RobotRadiusInches;
-			double a_dx = ax - Obstacles[i].X, a_dy = ay - Obstacles[i].Y;
-			if (a_dx * a_dx + a_dy * a_dy < minDist * minDist) a_ok = false;
-			double d_dx = dx - Obstacles[i].X, d_dy = dy - Obstacles[i].Y;
-			if (d_dx * d_dx + d_dy * d_dy < minDist * minDist) d_ok = false;
-		}
-		// Also avoid placing Attacker and Defender on top of each other
-		double ad_dx = ax - dx, ad_dy = ay - dy;
-		if (ad_dx * ad_dx + ad_dy * ad_dy < (2.0 * RobotRadiusInches) * (2.0 * RobotRadiusInches))
-			a_ok = d_ok = false;
-		if (a_ok && d_ok) {
-			Attacker.X = ax;
-			Attacker.Y = ay;
-			Defender.X = dx;
-			Defender.Y = dy;
-			Attacker.theta_chassis = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
-			Attacker.theta_laser = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
-			Attacker.target_x = dx;
-			Attacker.target_y = dy;
-			Defender.theta_chassis = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
-			Defender.theta_laser = (double)rand() / (double)RAND_MAX * 2.0 * M_PI;
-			Defender.target_x = dx;
-			Defender.target_y = dy;
-			break;
-		}
-	}
+	// Orientations and targets
+	Attacker.theta_chassis = atan2(Defender.Y - Attacker.Y, Defender.X - Attacker.X);
+	Attacker.theta_laser = Attacker.theta_chassis;
+	Attacker.target_x = Defender.X;
+	Attacker.target_y = Defender.Y;
+	Defender.theta_chassis = atan2(Attacker.Y - Defender.Y, Attacker.X - Defender.X);
+	Defender.theta_laser = Defender.theta_chassis;
+	Defender.target_x = Obstacles[0].X;
+	Defender.target_y = Obstacles[0].Y;
 }
 
 world::~world() {
@@ -159,20 +151,40 @@ void world::Update(double dt) {
 			break;
 		}
 	}
-	// Phase 7: Attacker target = Defender (LoS clear or blocked; APF in Phase 9 uses this)
-	Attacker.target_x = Defender.X;
-	Attacker.target_y = Defender.Y;
-	// Step chassis toward target for visible feedback
-	double target_chassis = atan2(Attacker.target_y - Attacker.Y, Attacker.target_x - Attacker.X);
-	double diff = target_chassis - Attacker.theta_chassis;
-	while (diff > M_PI) diff -= 2.0 * M_PI;
-	while (diff < -M_PI) diff += 2.0 * M_PI;
-	double step = diff;
-	if (step > ChassisTurnRateRadPerFrame) step = ChassisTurnRateRadPerFrame;
-	if (step < -ChassisTurnRateRadPerFrame) step = -ChassisTurnRateRadPerFrame;
-	Attacker.theta_chassis += step;
-	while (Attacker.theta_chassis > M_PI) Attacker.theta_chassis -= 2.0 * M_PI;
-	while (Attacker.theta_chassis < -M_PI) Attacker.theta_chassis += 2.0 * M_PI;
+	// Phase 7: Attacker target = Defender when LoS clear; when blocked, waypoint around blocking obstacle
+	if (los_clear) {
+		Attacker.target_x = Defender.X;
+		Attacker.target_y = Defender.Y;
+	} else if (blocking_obstacle_index >= 0 && Obstacles[blocking_obstacle_index].isActive) {
+		int bi = blocking_obstacle_index;
+		double ox = Obstacles[bi].X, oy = Obstacles[bi].Y, R = Obstacles[bi].R;
+		double vx = ox - ax, vy = oy - ay;
+		double len = sqrt(vx * vx + vy * vy);
+		if (len >= eps) {
+			vx /= len;
+			vy /= len;
+			double clearance = R + RobotRadiusInches + WaypointClearanceInches;
+			double perp1_x = -vy, perp1_y = vx;
+			double perp2_x = vy, perp2_y = -vx;
+			double wp1_x = ox + clearance * perp1_x, wp1_y = oy + clearance * perp1_y;
+			double wp2_x = ox + clearance * perp2_x, wp2_y = oy + clearance * perp2_y;
+			double d1_sq = (dx - wp1_x) * (dx - wp1_x) + (dy - wp1_y) * (dy - wp1_y);
+			double d2_sq = (dx - wp2_x) * (dx - wp2_x) + (dy - wp2_y) * (dy - wp2_y);
+			if (d1_sq <= d2_sq) {
+				Attacker.target_x = wp1_x;
+				Attacker.target_y = wp1_y;
+			} else {
+				Attacker.target_x = wp2_x;
+				Attacker.target_y = wp2_y;
+			}
+		} else {
+			Attacker.target_x = Defender.X;
+			Attacker.target_y = Defender.Y;
+		}
+	} else {
+		Attacker.target_x = Defender.X;
+		Attacker.target_y = Defender.Y;
+	}
 
 	// Phase 8: Defender target = shadow point behind an obstacle (from Attacker)
 	double best_sx = Defender.X, best_sy = Defender.Y;
@@ -189,10 +201,25 @@ void world::Update(double dt) {
 			vy /= len;
 			double ext = R + RobotRadiusInches + ShadowBufferInches;
 			double sx = ox + ext * vx, sy = oy + ext * vy;
-			if (sx >= 0.0 && sx <= WorldWidthInches && sy >= 0.0 && sy <= WorldHeightInches) {
-				best_sx = sx;
-				best_sy = sy;
-				have_valid = true;
+			// Valid: in bounds and not wall-adjacent (avoid cornering)
+			if (sx >= RobotRadiusInches && sx <= WorldWidthInches - RobotRadiusInches &&
+			    sy >= RobotRadiusInches && sy <= WorldHeightInches - RobotRadiusInches) {
+				// Reject if shadow lands inside another obstacle
+				bool inside_obs = false;
+				for (int j = 0; j < N_OBSTACLES_MAX; j++) {
+					if (!Obstacles[j].isActive) continue;
+					double sdx = sx - Obstacles[j].X, sdy = sy - Obstacles[j].Y;
+					double min_dist = Obstacles[j].R + RobotRadiusInches;
+					if (sdx * sdx + sdy * sdy < min_dist * min_dist) {
+						inside_obs = true;
+						break;
+					}
+				}
+				if (!inside_obs) {
+					best_sx = sx;
+					best_sy = sy;
+					have_valid = true;
+				}
 			}
 		}
 	}
@@ -207,7 +234,20 @@ void world::Update(double dt) {
 			vy /= len;
 			double ext = R + RobotRadiusInches + ShadowBufferInches;
 			double sx = ox + ext * vx, sy = oy + ext * vy;
-			if (sx < 0.0 || sx > WorldWidthInches || sy < 0.0 || sy > WorldHeightInches) continue;
+			if (sx < RobotRadiusInches || sx > WorldWidthInches - RobotRadiusInches ||
+			    sy < RobotRadiusInches || sy > WorldHeightInches - RobotRadiusInches) continue;
+			// Reject if shadow lands inside another obstacle
+			bool inside_obs = false;
+			for (int j = 0; j < N_OBSTACLES_MAX; j++) {
+				if (!Obstacles[j].isActive) continue;
+				double sdx = sx - Obstacles[j].X, sdy = sy - Obstacles[j].Y;
+				double min_dist = Obstacles[j].R + RobotRadiusInches;
+				if (sdx * sdx + sdy * sdy < min_dist * min_dist) {
+					inside_obs = true;
+					break;
+				}
+			}
+			if (inside_obs) continue;
 			double ddx = sx - Defender.X, ddy = sy - Defender.Y;
 			double dist_sq = ddx * ddx + ddy * ddy;
 			if (dist_sq < best_dist_sq) {
@@ -224,19 +264,16 @@ void world::Update(double dt) {
 	}
 	Defender.target_x = best_sx;
 	Defender.target_y = best_sy;
-	// Step Defender chassis toward shadow target
-	double target_chassis_d = atan2(Defender.target_y - Defender.Y, Defender.target_x - Defender.X);
-	double diff_d = target_chassis_d - Defender.theta_chassis;
-	while (diff_d > M_PI) diff_d -= 2.0 * M_PI;
-	while (diff_d < -M_PI) diff_d += 2.0 * M_PI;
-	double step_d = diff_d;
-	if (step_d > ChassisTurnRateRadPerFrame) step_d = ChassisTurnRateRadPerFrame;
-	if (step_d < -ChassisTurnRateRadPerFrame) step_d = -ChassisTurnRateRadPerFrame;
-	Defender.theta_chassis += step_d;
-	while (Defender.theta_chassis > M_PI) Defender.theta_chassis -= 2.0 * M_PI;
-	while (Defender.theta_chassis < -M_PI) Defender.theta_chassis += 2.0 * M_PI;
+	// Hold when safe: LoS blocked and already close to shadow target — stop chasing to avoid cornering
+	if (!los_clear) {
+		double d2 = (Defender.X - best_sx) * (Defender.X - best_sx) + (Defender.Y - best_sy) * (Defender.Y - best_sy);
+		if (d2 < ShadowArrivalInches * ShadowArrivalInches) {
+			Defender.target_x = Defender.X;
+			Defender.target_y = Defender.Y;
+		}
+	}
 
-	// Phase 9: APF pathfinding — move both robots toward targets with obstacle avoidance
+	// Phase 9: APF pathfinding — non-holonomic: turn toward desired direction, drive forward along chassis
 	const double min_d = 0.5;  // avoid div by zero in repulsion
 	const double min_force = 1e-3;  // skip move when total force negligible (avoid jitter)
 	// Attacker: APF toward Defender (target already set)
@@ -255,15 +292,22 @@ void world::Update(double dt) {
 		for (int i = 0; i < N_OBSTACLES_MAX; i++) {
 			if (!Obstacles[i].isActive) continue;
 			double ox = Obstacles[i].X, oy = Obstacles[i].Y, R = Obstacles[i].R;
-			double d_safe = R + RobotRadiusInches + APFSafetyMarginInches;
+			double d_safe = R + APFRadiusInches + APFSafetyMarginInches;
 			double dx = rx - ox, dy = ry - oy;
 			double d = sqrt(dx * dx + dy * dy);
 			if (d < min_d) d = min_d;
 			if (d < d_safe) {
 				double mag = APFRepulsiveGain * (1.0 / d - 1.0 / d_safe);
 				if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
-				fx += mag * (dx / d);
-				fy += mag * (dy / d);
+				double nx = dx / d, ny = dy / d;
+				fx += mag * nx;
+				fy += mag * ny;
+				// Tangential component to orbit around obstacle (break deadlock)
+				double dot_t = -ny * fay + nx * fax;
+				double tx_t = (dot_t > 0.0) ? -ny : ny;
+				double ty_t = (dot_t > 0.0) ? nx : -nx;
+				fx += APFTangentialFraction * mag * tx_t;
+				fy += APFTangentialFraction * mag * ty_t;
 			}
 		}
 		// Robot-robot repulsion: Attacker repelled by Defender
@@ -276,28 +320,53 @@ void world::Update(double dt) {
 			fx += mag * (adx / d_robot);
 			fy += mag * (ady / d_robot);
 		}
+		// Wall repulsion
+		double wx = rx; if (wx < min_d) wx = min_d;
+		if (wx < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wx - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fx += mag;
+		}
+		double wx2 = WorldWidthInches - rx; if (wx2 < min_d) wx2 = min_d;
+		if (wx2 < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wx2 - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fx -= mag;
+		}
+		double wy = ry; if (wy < min_d) wy = min_d;
+		if (wy < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wy - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fy += mag;
+		}
+		double wy2 = WorldHeightInches - ry; if (wy2 < min_d) wy2 = min_d;
+		if (wy2 < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wy2 - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fy -= mag;
+		}
 		double f_len = sqrt(fx * fx + fy * fy);
 		if (f_len > min_force) {
-			double step = RobotSpeedInchesPerFrame;
-			if (dist_att > eps && dist_att < step) step = dist_att;
-			double new_ax = rx + (fx / f_len) * step;
-			double new_ay = ry + (fy / f_len) * step;
-			bool would_penetrate = false;
-			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
-				if (!Obstacles[i].isActive) continue;
-				double odx = new_ax - Obstacles[i].X, ody = new_ay - Obstacles[i].Y;
-				double od = sqrt(odx * odx + ody * ody);
-				if (od < Obstacles[i].R + RobotRadiusInches) {
-					would_penetrate = true;
-					break;
-				}
-			}
-			if (!would_penetrate) {
-				Attacker.X = new_ax;
-				Attacker.Y = new_ay;
-			}
-		} else if (dist_att > eps && dist_att <= RobotSpeedInchesPerFrame) {
-			double new_ax = tx, new_ay = ty;
+			double desired_theta = atan2(fy, fx);
+			// Turn chassis toward desired direction
+			double diff = desired_theta - Attacker.theta_chassis;
+			while (diff > M_PI) diff -= 2.0 * M_PI;
+			while (diff < -M_PI) diff += 2.0 * M_PI;
+			double step = diff;
+			if (step > ChassisTurnRateRadPerFrame) step = ChassisTurnRateRadPerFrame;
+			if (step < -ChassisTurnRateRadPerFrame) step = -ChassisTurnRateRadPerFrame;
+			Attacker.theta_chassis += step;
+			while (Attacker.theta_chassis > M_PI) Attacker.theta_chassis -= 2.0 * M_PI;
+			while (Attacker.theta_chassis < -M_PI) Attacker.theta_chassis += 2.0 * M_PI;
+			// Move forward along chassis (non-holonomic): speed scaled by alignment
+			double angle_diff = desired_theta - Attacker.theta_chassis;
+			while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+			while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+			double cos_a = cos(angle_diff);
+			if (cos_a < 0.0) cos_a = 0.0;
+			double forward_speed = RobotSpeedInchesPerFrame * cos_a;
+			double new_ax = rx + forward_speed * cos(Attacker.theta_chassis);
+			double new_ay = ry + forward_speed * sin(Attacker.theta_chassis);
 			bool would_penetrate = false;
 			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
 				if (!Obstacles[i].isActive) continue;
@@ -318,7 +387,7 @@ void world::Update(double dt) {
 		if (Attacker.Y < 0.0) Attacker.Y = 0.0;
 		if (Attacker.Y > WorldHeightInches) Attacker.Y = WorldHeightInches;
 	}
-	// Defender: APF toward shadow target
+	// Defender: APF toward shadow target (same non-holonomic model)
 	{
 		double rx = Defender.X, ry = Defender.Y;
 		double tx = Defender.target_x, ty = Defender.target_y;
@@ -334,15 +403,21 @@ void world::Update(double dt) {
 		for (int i = 0; i < N_OBSTACLES_MAX; i++) {
 			if (!Obstacles[i].isActive) continue;
 			double ox = Obstacles[i].X, oy = Obstacles[i].Y, R = Obstacles[i].R;
-			double d_safe = R + RobotRadiusInches + APFSafetyMarginInches;
+			double d_safe = R + APFRadiusInches + APFSafetyMarginInches;
 			double dx = rx - ox, dy = ry - oy;
 			double d = sqrt(dx * dx + dy * dy);
 			if (d < min_d) d = min_d;
 			if (d < d_safe) {
 				double mag = APFRepulsiveGain * (1.0 / d - 1.0 / d_safe);
 				if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
-				fx += mag * (dx / d);
-				fy += mag * (dy / d);
+				double nx = dx / d, ny = dy / d;
+				fx += mag * nx;
+				fy += mag * ny;
+				double dot_t = -ny * fay + nx * fax;
+				double tx_t = (dot_t > 0.0) ? -ny : ny;
+				double ty_t = (dot_t > 0.0) ? nx : -nx;
+				fx += APFTangentialFraction * mag * tx_t;
+				fy += APFTangentialFraction * mag * ty_t;
 			}
 		}
 		// Robot-robot repulsion: Defender repelled by Attacker
@@ -355,28 +430,51 @@ void world::Update(double dt) {
 			fx += mag * (dax / d_robot);
 			fy += mag * (day / d_robot);
 		}
+		// Wall repulsion
+		double wx = rx; if (wx < min_d) wx = min_d;
+		if (wx < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wx - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fx += mag;
+		}
+		double wx2 = WorldWidthInches - rx; if (wx2 < min_d) wx2 = min_d;
+		if (wx2 < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wx2 - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fx -= mag;
+		}
+		double wy = ry; if (wy < min_d) wy = min_d;
+		if (wy < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wy - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fy += mag;
+		}
+		double wy2 = WorldHeightInches - ry; if (wy2 < min_d) wy2 = min_d;
+		if (wy2 < WallRepelDistInches) {
+			double mag = WallRepelGain * (1.0 / wy2 - 1.0 / WallRepelDistInches);
+			if (mag > MaxRepulsiveForce) mag = MaxRepulsiveForce;
+			fy -= mag;
+		}
 		double f_len = sqrt(fx * fx + fy * fy);
 		if (f_len > min_force) {
-			double step = RobotSpeedInchesPerFrame;
-			if (dist_att > eps && dist_att < step) step = dist_att;
-			double new_dx = rx + (fx / f_len) * step;
-			double new_dy = ry + (fy / f_len) * step;
-			bool would_penetrate = false;
-			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
-				if (!Obstacles[i].isActive) continue;
-				double odx = new_dx - Obstacles[i].X, ody = new_dy - Obstacles[i].Y;
-				double od = sqrt(odx * odx + ody * ody);
-				if (od < Obstacles[i].R + RobotRadiusInches) {
-					would_penetrate = true;
-					break;
-				}
-			}
-			if (!would_penetrate) {
-				Defender.X = new_dx;
-				Defender.Y = new_dy;
-			}
-		} else if (dist_att > eps && dist_att <= RobotSpeedInchesPerFrame) {
-			double new_dx = tx, new_dy = ty;
+			double desired_theta = atan2(fy, fx);
+			double diff = desired_theta - Defender.theta_chassis;
+			while (diff > M_PI) diff -= 2.0 * M_PI;
+			while (diff < -M_PI) diff += 2.0 * M_PI;
+			double step = diff;
+			if (step > ChassisTurnRateRadPerFrame) step = ChassisTurnRateRadPerFrame;
+			if (step < -ChassisTurnRateRadPerFrame) step = -ChassisTurnRateRadPerFrame;
+			Defender.theta_chassis += step;
+			while (Defender.theta_chassis > M_PI) Defender.theta_chassis -= 2.0 * M_PI;
+			while (Defender.theta_chassis < -M_PI) Defender.theta_chassis += 2.0 * M_PI;
+			double angle_diff = desired_theta - Defender.theta_chassis;
+			while (angle_diff > M_PI) angle_diff -= 2.0 * M_PI;
+			while (angle_diff < -M_PI) angle_diff += 2.0 * M_PI;
+			double cos_a = cos(angle_diff);
+			if (cos_a < 0.0) cos_a = 0.0;
+			double forward_speed = RobotSpeedInchesPerFrame * cos_a;
+			double new_dx = rx + forward_speed * cos(Defender.theta_chassis);
+			double new_dy = ry + forward_speed * sin(Defender.theta_chassis);
 			bool would_penetrate = false;
 			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
 				if (!Obstacles[i].isActive) continue;

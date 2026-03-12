@@ -36,6 +36,15 @@
 // Phase 9: APF pathfinding and motion
 #define APFRepulsiveGain       80.0   // repulsive force scale
 #define APFSafetyMarginInches  6.0    // extra margin beyond obstacle R + robot R for repulsion influence
+#define APFRadiusInches  4.0   // smaller radius for APF repulsion only (robot can fit tighter gaps); collision check still uses RobotRadiusInches
+#define WaypointClearanceInches  4.0  // Attacker waypoint around blocking obstacle: clearance beyond obstacle R + robot R
 #define RobotSpeedInchesPerFrame  0.18  // movement step per frame (dt not used); reduced to avoid vibration
 #define MaxRepulsiveForce      15.0   // cap per-obstacle/robot repulsion magnitude to prevent vibration
 #define RobotRobotRepelDistInches  14.0  // distance below which Attacker and Defender repel each other
+// Non-holonomic APF: tangential force to orbit around obstacles (break deadlock)
+#define APFTangentialFraction  0.6
+// Wall repulsion so robots don't get pushed to edges
+#define WallRepelDistInches  10.0
+#define WallRepelGain  40.0
+// Defender: hold when already at shadow and LoS blocked; reject shadows too close to walls
+#define ShadowArrivalInches  4.0

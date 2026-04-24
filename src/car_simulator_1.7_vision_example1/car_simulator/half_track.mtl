@@ -1,0 +1,16 @@
+# Wavefront MTL file
+# Creator: Ultimate Unwrap3D Pro (x64) v3.50.55
+# URL: http://www.unwrap3d.com
+# Time: Fri May 29 16:04:13 2020
+# num_materials: 1
+
+newmtl Untitled
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+d 1.000000
+illum 2
+Ns 1.000000
+map_Kd half_track.bmp
+
+# num_materials: 1

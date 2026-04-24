@@ -1,0 +1,87 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{7E56BCE6-5C39-441D-9CAC-2739075FA2BC}|program.vcxproj|C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\program.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{7E56BCE6-5C39-441D-9CAC-2739075FA2BC}|program.vcxproj|solutionrelative:program.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7E56BCE6-5C39-441D-9CAC-2739075FA2BC}|program.vcxproj|C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\my_functions.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{7E56BCE6-5C39-441D-9CAC-2739075FA2BC}|program.vcxproj|solutionrelative:my_functions.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7E56BCE6-5C39-441D-9CAC-2739075FA2BC}|program.vcxproj|C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\my_functions.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{7E56BCE6-5C39-441D-9CAC-2739075FA2BC}|program.vcxproj|solutionrelative:my_functions.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\Formula Sheet.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Formula Sheet.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Formula Sheet.cpp",
+              "DocumentMoniker": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\Formula Sheet.cpp",
+              "RelativeDocumentMoniker": "Formula Sheet.cpp",
+              "ToolTip": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\Formula Sheet.cpp",
+              "RelativeToolTip": "Formula Sheet.cpp",
+              "ViewState": "AgIAAO0AAAAAAAAAAAA6wAABAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-04-22T22:33:10.161Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "my_functions.h",
+              "DocumentMoniker": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\my_functions.h",
+              "RelativeDocumentMoniker": "my_functions.h",
+              "ToolTip": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\my_functions.h",
+              "RelativeToolTip": "my_functions.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAABUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-04-16T20:50:09.017Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "my_functions.cpp",
+              "DocumentMoniker": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\my_functions.cpp",
+              "RelativeDocumentMoniker": "my_functions.cpp",
+              "ToolTip": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\my_functions.cpp",
+              "RelativeToolTip": "my_functions.cpp",
+              "ViewState": "AgIAAJAAAAAAAAAAAAAAACcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-04-15T14:41:58.04Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "program.cpp",
+              "DocumentMoniker": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\program.cpp",
+              "RelativeDocumentMoniker": "program.cpp",
+              "ToolTip": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\MECH 472 Project\\program.cpp",
+              "RelativeToolTip": "program.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-04-15T14:21:24.677Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

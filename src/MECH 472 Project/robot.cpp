@@ -12,9 +12,11 @@
 void Draw(robot const& r, world const& w, bool isAttacker) {
 	const double half_len = 0.5 * RobotBodyLengthInches;
 	const double half_wid = 0.5 * RobotBodyWidthInches;
+
 	double cx = r.X, cy = r.Y;
 	double th = r.theta_chassis;
 	double c = cos(th), s = sin(th);
+	
 	// Four corners of body rectangle in camera-space inches
 	double dx0 = half_len * c - half_wid * s, dy0 = half_len * s + half_wid * c;
 	double dx1 = half_len * c + half_wid * s, dy1 = half_len * s - half_wid * c;
@@ -23,9 +25,11 @@ void Draw(robot const& r, world const& w, bool isAttacker) {
 	wx[1] = cx + dx1; wy[1] = cy + dy1;
 	wx[2] = cx - dx0; wy[2] = cy - dy0;
 	wx[3] = cx - dx1; wy[3] = cy - dy1;
+	
 	double sx[4], sy[4];
 	for (int i = 0; i < 4; i++)
 		w.CameraToScreen(wx[i], wy[i], sx[i], sy[i]);
+	
 	// Body as two triangles; Attacker = blue, Defender = green
 	double bodyR = isAttacker ? 0.2 : 0.2, bodyG = isAttacker ? 0.3 : 0.6, bodyB = isAttacker ? 0.8 : 0.2;
 	double x3[3], y3[3], R3[3], G3[3], B3[3];

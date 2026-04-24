@@ -29,4 +29,13 @@ private:
 	robot Defender;
 	bool los_clear;   // Phase 6: true if no obstacle blocks Attacker–Defender segment
 	int blocking_obstacle_index;  // Phase 8: index of obstacle blocking LoS, or -1 if clear
+	// Phase 10: committed contour (attacker)
+	int attacker_contour_side;    // -1 = none, 0 = left, 1 = right
+	int attacker_contour_obs;      // index of obstacle being contoured
+	double attacker_wp_x, attacker_wp_y;  // frozen waypoint
+	int attacker_stall_frames;    // frames without progress toward defender
+	double attacker_prev_dist_sq;  // previous distance-to-defender squared
+	// Phase 10: defender progress toward shadow
+	int defender_stall_frames;
+	double defender_prev_dist_to_target_sq;
 };

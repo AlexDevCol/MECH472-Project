@@ -1,0 +1,4 @@
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 10\mech663_assignment5\solution\Q1\Debug\program.exe
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Q1\Debug\program.exe
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Final\Debug\program.exe
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\Debug\program.exe

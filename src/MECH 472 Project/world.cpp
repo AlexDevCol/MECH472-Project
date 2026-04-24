@@ -13,7 +13,7 @@
 
 world::world() {
 	N_obstacles = 5;
-	// Fixed initial positions (inches) and radii — all active for Phase 3
+	// Fixed initial positions (inches) and radii
 	Obstacles[0].X = 18;  Obstacles[0].Y = 18;  Obstacles[0].R = 4;  Obstacles[0].isActive = true;
 	Obstacles[1].X = 54;  Obstacles[1].Y = 24;  Obstacles[1].R = 5;  Obstacles[1].isActive = true;
 	Obstacles[2].X = 36;  Obstacles[2].Y = 48;  Obstacles[2].R = 3;  Obstacles[2].isActive = true;
@@ -25,7 +25,7 @@ world::world() {
 	for (int i = N_obstacles; i < N_OBSTACLES_MAX; i++)
 		Obstacles[i].isActive = false;
 
-	// Phase 4: initial positions and orientations for Attacker and Defender
+	//initial positions and orientations for Attacker and Defender
 	Attacker.X = 15;
 	Attacker.Y = 15;
 	Attacker.theta_chassis = 0.25 * M_PI;
@@ -38,6 +38,14 @@ world::world() {
 	Defender.laserOn = false;   // defense mode: laser off, do not draw
 	los_clear = true;
 	blocking_obstacle_index = -1;
+	attacker_contour_side = -1;
+	attacker_contour_obs = -1;
+	attacker_wp_x = attacker_wp_y = 0.0;
+	attacker_stall_frames = 0;
+	attacker_prev_dist_sq = 1e30;
+	defender_stall_frames = 0;
+	defender_prev_dist_to_target_sq = 1e30;
+
 	// Use same shuffle logic so initial layout has no robot–obstacle overlap
 	Shuffle();
 }
@@ -98,10 +106,29 @@ void world::Shuffle() {
 	Defender.theta_laser = Defender.theta_chassis;
 	Defender.target_x = Obstacles[0].X;
 	Defender.target_y = Obstacles[0].Y;
+	// Reset Phase 10 contour state on shuffle
+	attacker_contour_side = -1;
+	attacker_contour_obs = -1;
+	defender_stall_frames = 0;
+	defender_prev_dist_to_target_sq = 1e30;
 }
 
 world::~world() {
 	// Phase 3: fixed array, nothing to delete
+}
+
+// Phase 10: OBB (robot rectangle) vs circle (obstacle) overlap test
+static bool OBBCircleOverlap(double cx, double cy, double theta,
+	double halfL, double halfW,
+	double ox, double oy, double R) {
+	double dx = ox - cx, dy = oy - cy;
+	double c = cos(-theta), s = sin(-theta);
+	double lx = dx * c - dy * s;
+	double ly = dx * s + dy * c;
+	double clampX = lx < -halfL ? -halfL : (lx > halfL ? halfL : lx);
+	double clampY = ly < -halfW ? -halfW : (ly > halfW ? halfW : ly);
+	double ex = lx - clampX, ey = ly - clampY;
+	return (ex * ex + ey * ey) < R * R;
 }
 
 void world::CameraToScreen(double x_inches, double y_inches, double& out_x, double& out_y) const {
@@ -151,10 +178,14 @@ void world::Update(double dt) {
 			break;
 		}
 	}
-	// Phase 7: Attacker target = Defender when LoS clear; when blocked, waypoint around blocking obstacle
+	// Phase 7 + 10: Attacker target — committed contour (sticky waypoint) to avoid free-spinning
+	double dist_to_defender_sq = (ax - dx) * (ax - dx) + (ay - dy) * (ay - dy);
 	if (los_clear) {
 		Attacker.target_x = Defender.X;
 		Attacker.target_y = Defender.Y;
+		attacker_contour_side = -1;
+		attacker_contour_obs = -1;
+		attacker_stall_frames = 0;
 	} else if (blocking_obstacle_index >= 0 && Obstacles[blocking_obstacle_index].isActive) {
 		int bi = blocking_obstacle_index;
 		double ox = Obstacles[bi].X, oy = Obstacles[bi].Y, R = Obstacles[bi].R;
@@ -164,26 +195,81 @@ void world::Update(double dt) {
 			vx /= len;
 			vy /= len;
 			double clearance = R + RobotRadiusInches + WaypointClearanceInches;
-			double perp1_x = -vy, perp1_y = vx;
-			double perp2_x = vy, perp2_y = -vx;
+			double perp0_x = -vy, perp0_y = vx;   // "left"
+			double perp1_x = vy, perp1_y = -vx;   // "right"
+			double wp0_x = ox + clearance * perp0_x, wp0_y = oy + clearance * perp0_y;
 			double wp1_x = ox + clearance * perp1_x, wp1_y = oy + clearance * perp1_y;
-			double wp2_x = ox + clearance * perp2_x, wp2_y = oy + clearance * perp2_y;
+			double d0_sq = (dx - wp0_x) * (dx - wp0_x) + (dy - wp0_y) * (dy - wp0_y);
 			double d1_sq = (dx - wp1_x) * (dx - wp1_x) + (dy - wp1_y) * (dy - wp1_y);
-			double d2_sq = (dx - wp2_x) * (dx - wp2_x) + (dy - wp2_y) * (dy - wp2_y);
-			if (d1_sq <= d2_sq) {
-				Attacker.target_x = wp1_x;
-				Attacker.target_y = wp1_y;
+			int preferred_side = (d0_sq <= d1_sq) ? 0 : 1;
+			// Phase 10: gap feasibility — can robot fit through passage on this side?
+			auto passage_ok = [this, bi](double wx, double wy) {
+				if (wx < MinPassageWidthInches || wx > WorldWidthInches - MinPassageWidthInches) return false;
+				if (wy < MinPassageWidthInches || wy > WorldHeightInches - MinPassageWidthInches) return false;
+				for (int j = 0; j < N_OBSTACLES_MAX; j++) {
+					if (j == bi || !Obstacles[j].isActive) continue;
+					double ddx = wx - Obstacles[j].X, ddy = wy - Obstacles[j].Y;
+					double min_dist = Obstacles[j].R + MinPassageWidthInches;
+					if (ddx * ddx + ddy * ddy < min_dist * min_dist) return false;
+				}
+				return true;
+			};
+			bool gap_ok_0 = passage_ok(wp0_x, wp0_y);
+			bool gap_ok_1 = passage_ok(wp1_x, wp1_y);
+			int chosen_side = preferred_side;
+			if (preferred_side == 0 && !gap_ok_0 && gap_ok_1) chosen_side = 1;
+			else if (preferred_side == 1 && !gap_ok_1 && gap_ok_0) chosen_side = 0;
+			bool need_new_waypoint = false;
+			if (attacker_contour_side < 0 || attacker_contour_obs != bi) {
+				need_new_waypoint = true;
+				attacker_contour_obs = bi;
+				attacker_contour_side = chosen_side;
+				attacker_stall_frames = 0;
+				attacker_prev_dist_sq = dist_to_defender_sq;
 			} else {
-				Attacker.target_x = wp2_x;
-				Attacker.target_y = wp2_y;
+				double wp_x = (attacker_contour_side == 0) ? wp0_x : wp1_x;
+				double wp_y = (attacker_contour_side == 0) ? wp0_y : wp1_y;
+				double to_wp_sq = (ax - wp_x) * (ax - wp_x) + (ay - wp_y) * (ay - wp_y);
+				if (to_wp_sq < ContourArrivalRadius * ContourArrivalRadius) {
+					need_new_waypoint = true;
+					attacker_contour_side = -1;
+					attacker_contour_obs = -1;
+				} else if (dist_to_defender_sq < attacker_prev_dist_sq - ContourProgressEpsilon) {
+					attacker_stall_frames = 0;
+					attacker_prev_dist_sq = dist_to_defender_sq;
+				} else {
+					attacker_stall_frames++;
+					if (attacker_stall_frames >= ContourStallThreshold) {
+						need_new_waypoint = true;
+						attacker_contour_side = 1 - attacker_contour_side;
+						attacker_stall_frames = 0;
+						attacker_prev_dist_sq = dist_to_defender_sq;
+					}
+				}
+			}
+			if (need_new_waypoint && attacker_contour_side < 0) {
+				Attacker.target_x = Defender.X;
+				Attacker.target_y = Defender.Y;
+			} else if (need_new_waypoint && attacker_contour_side >= 0) {
+				attacker_wp_x = (attacker_contour_side == 0) ? wp0_x : wp1_x;
+				attacker_wp_y = (attacker_contour_side == 0) ? wp0_y : wp1_y;
+				Attacker.target_x = attacker_wp_x;
+				Attacker.target_y = attacker_wp_y;
+			} else {
+				Attacker.target_x = attacker_wp_x;
+				Attacker.target_y = attacker_wp_y;
 			}
 		} else {
 			Attacker.target_x = Defender.X;
 			Attacker.target_y = Defender.Y;
+			attacker_contour_side = -1;
+			attacker_contour_obs = -1;
 		}
 	} else {
 		Attacker.target_x = Defender.X;
 		Attacker.target_y = Defender.Y;
+		attacker_contour_side = -1;
+		attacker_contour_obs = -1;
 	}
 
 	// Phase 8: Defender target = shadow point behind an obstacle (from Attacker)
@@ -216,9 +302,21 @@ void world::Update(double dt) {
 					}
 				}
 				if (!inside_obs) {
-					best_sx = sx;
-					best_sy = sy;
-					have_valid = true;
+					// Phase 10: blind-spot bonus — prefer shadow behind attacker's turret
+					double to_shadow = atan2(sy - Attacker.Y, sx - Attacker.X);
+					double rel = to_shadow - Attacker.theta_chassis;
+					while (rel > M_PI) rel -= 2.0 * M_PI;
+					while (rel < -M_PI) rel += 2.0 * M_PI;
+					double blind = (fabs(rel) > TurretHalfRangeDeg * (M_PI / 180.0)) ? BlindSpotBonus : 1.0;
+					double ddx = sx - Defender.X, ddy = sy - Defender.Y;
+					double dist_sq = ddx * ddx + ddy * ddy;
+					double effective_sq = dist_sq * blind;
+					if (effective_sq < best_dist_sq) {
+						best_dist_sq = effective_sq;
+						best_sx = sx;
+						best_sy = sy;
+						have_valid = true;
+					}
 				}
 			}
 		}
@@ -250,8 +348,21 @@ void world::Update(double dt) {
 			if (inside_obs) continue;
 			double ddx = sx - Defender.X, ddy = sy - Defender.Y;
 			double dist_sq = ddx * ddx + ddy * ddy;
-			if (dist_sq < best_dist_sq) {
-				best_dist_sq = dist_sq;
+			// Phase 10: blind-spot bonus
+			double to_shadow = atan2(sy - Attacker.Y, sx - Attacker.X);
+			double rel = to_shadow - Attacker.theta_chassis;
+			while (rel > M_PI) rel -= 2.0 * M_PI;
+			while (rel < -M_PI) rel += 2.0 * M_PI;
+			double blind = (fabs(rel) > TurretHalfRangeDeg * (M_PI / 180.0)) ? BlindSpotBonus : 1.0;
+			double effective_sq = dist_sq * blind;
+			// Phase 10: when stalled, penalize current target so we try another shadow
+			if (defender_stall_frames >= DefenderStallThreshold) {
+				double to_cur_sq = (sx - Defender.target_x) * (sx - Defender.target_x) + (sy - Defender.target_y) * (sy - Defender.target_y);
+				if (to_cur_sq < ShadowArrivalInches * ShadowArrivalInches * 4.0)
+					effective_sq *= 10.0;
+			}
+			if (effective_sq < best_dist_sq) {
+				best_dist_sq = effective_sq;
 				best_sx = sx;
 				best_sy = sy;
 				have_valid = true;
@@ -272,6 +383,13 @@ void world::Update(double dt) {
 			Defender.target_y = Defender.Y;
 		}
 	}
+	// Phase 10: defender stall detection — progress toward current target
+	double dist_to_target_sq = (Defender.X - Defender.target_x) * (Defender.X - Defender.target_x) + (Defender.Y - Defender.target_y) * (Defender.Y - Defender.target_y);
+	if (dist_to_target_sq < defender_prev_dist_to_target_sq - DefenderShadowProgressEpsilon)
+		defender_stall_frames = 0;
+	else
+		defender_stall_frames++;
+	defender_prev_dist_to_target_sq = dist_to_target_sq;
 
 	// Phase 9: APF pathfinding — non-holonomic: turn toward desired direction, drive forward along chassis
 	const double min_d = 0.5;  // avoid div by zero in repulsion
@@ -370,13 +488,17 @@ void world::Update(double dt) {
 			bool would_penetrate = false;
 			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
 				if (!Obstacles[i].isActive) continue;
-				double odx = new_ax - Obstacles[i].X, ody = new_ay - Obstacles[i].Y;
-				double od = sqrt(odx * odx + ody * ody);
-				if (od < Obstacles[i].R + RobotRadiusInches) {
+				if (OBBCircleOverlap(new_ax, new_ay, Attacker.theta_chassis,
+					0.5 * RobotBodyLengthInches, 0.5 * RobotBodyWidthInches,
+					Obstacles[i].X, Obstacles[i].Y, Obstacles[i].R)) {
 					would_penetrate = true;
 					break;
 				}
 			}
+			if (!would_penetrate && OBBCircleOverlap(new_ax, new_ay, Attacker.theta_chassis,
+				0.5 * RobotBodyLengthInches, 0.5 * RobotBodyWidthInches,
+				Defender.X, Defender.Y, RobotRadiusInches))
+				would_penetrate = true;
 			if (!would_penetrate) {
 				Attacker.X = new_ax;
 				Attacker.Y = new_ay;
@@ -478,13 +600,17 @@ void world::Update(double dt) {
 			bool would_penetrate = false;
 			for (int i = 0; i < N_OBSTACLES_MAX; i++) {
 				if (!Obstacles[i].isActive) continue;
-				double odx = new_dx - Obstacles[i].X, ody = new_dy - Obstacles[i].Y;
-				double od = sqrt(odx * odx + ody * ody);
-				if (od < Obstacles[i].R + RobotRadiusInches) {
+				if (OBBCircleOverlap(new_dx, new_dy, Defender.theta_chassis,
+					0.5 * RobotBodyLengthInches, 0.5 * RobotBodyWidthInches,
+					Obstacles[i].X, Obstacles[i].Y, Obstacles[i].R)) {
 					would_penetrate = true;
 					break;
 				}
 			}
+			if (!would_penetrate && OBBCircleOverlap(new_dx, new_dy, Defender.theta_chassis,
+				0.5 * RobotBodyLengthInches, 0.5 * RobotBodyWidthInches,
+				Attacker.X, Attacker.Y, RobotRadiusInches))
+				would_penetrate = true;
 			if (!would_penetrate) {
 				Defender.X = new_dx;
 				Defender.Y = new_dy;

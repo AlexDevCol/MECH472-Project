@@ -48,3 +48,14 @@
 #define WallRepelGain  40.0
 // Defender: hold when already at shadow and LoS blocked; reject shadows too close to walls
 #define ShadowArrivalInches  4.0
+// Phase 10: committed contour (avoid free-spinning around obstacles)
+#define ContourStallThreshold     60    // frames before switching sides (~1-2 sec)
+#define ContourArrivalRadius      3.0   // inches: "close enough" to waypoint
+#define ContourProgressEpsilon    0.5   // min distance decrease per check window
+// Phase 10: defender prefers shadows in attacker's blind spot
+#define BlindSpotBonus  0.4   // multiplier on distance (lower = more attractive)
+// Phase 10: defender stall detection when heading to shadow
+#define DefenderStallThreshold    80    // frames without progress before trying next shadow
+#define DefenderShadowProgressEpsilon  0.3
+// Phase 10: gap feasibility when choosing contour side (min passage width for robot)
+#define MinPassageWidthInches  (RobotBodyWidthInches + 2.0)

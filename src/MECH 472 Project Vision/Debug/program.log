@@ -1,0 +1,12 @@
+﻿  my_functions.cpp
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\my_functions.cpp(275,7): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  program.cpp
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\program.cpp(76,61): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\program.cpp(76,54): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\program.cpp(76,47): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+  timer.cpp
+  vision.cpp
+  Generating Code...
+image_transfer.lib(image_transfer.obj) : warning LNK4099: PDB 'program.pdb' was not found with 'image_transfer.lib(image_transfer.obj)' or at 'C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\Debug\program.pdb'; linking object as if no debug info
+image_transfer.lib(Video_IO.obj) : warning LNK4099: PDB 'program.pdb' was not found with 'image_transfer.lib(Video_IO.obj)' or at 'C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\Debug\program.pdb'; linking object as if no debug info
+  program.vcxproj -> C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\MECH 472 Project\Debug\program.exe

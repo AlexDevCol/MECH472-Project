@@ -1,0 +1,18 @@
+﻿  controller.cpp
+  draw_3D_graphics.cpp
+  graphics.cpp
+  image_transfer7.cpp
+  ran.cpp
+  ran2.cpp
+  ran3.cpp
+  robot.cpp
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 12\car_simulator_1.7_vision_example1\car_simulator\image_transfer7.cpp(64,9): warning C4101: 'n_timeout': unreferenced local variable
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 12\car_simulator_1.7_vision_example1\car_simulator\image_transfer7.cpp(64,6): warning C4101: 'i': unreferenced local variable
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 12\car_simulator_1.7_vision_example1\car_simulator\image_transfer7.cpp(154,39): warning C4267: '=': conversion from 'size_t' to 'DWORD', possible loss of data
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 12\car_simulator_1.7_vision_example1\car_simulator\image_transfer7.cpp(172,29): warning C4267: 'argument': conversion from 'size_t' to 'DWORD', possible loss of data
+C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 12\car_simulator_1.7_vision_example1\car_simulator\image_transfer7.cpp(227,25): warning C4267: 'argument': conversion from 'size_t' to 'DWORD', possible loss of data
+  rotation.cpp
+  timer.cpp
+  Generating Code...
+     Creating library Bin\Desktop_2017\x64\Release\DirectXTKSimpleSample.lib and object Bin\Desktop_2017\x64\Release\DirectXTKSimpleSample.exp
+  DirectXTKSimpleSample.vcxproj -> C:\Users\JR-Alejo\Documents\Concordia\Winter 2026\MECH 472\Material Recap\Week 12\car_simulator_1.7_vision_example1\car_simulator\Bin\Desktop_2017\x64\Release\DirectXTKSimpleSample.exe

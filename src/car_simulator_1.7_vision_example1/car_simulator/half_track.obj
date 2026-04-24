@@ -1,0 +1,39 @@
+# Wavefront OBJ file
+# Creator: Ultimate Unwrap3D Pro (x64) v3.50.55
+# Website: http://www.unwrap3d.com
+# Time: Fri May 29 16:04:13 2020
+# num_vertices: 4
+# num_vertex_normals: 4
+# num_uvs: 6
+# num_faces: 2
+# num_groups: 1
+
+mtllib half_track.mtl
+
+v 49.810001 30.084999 0.000000
+v -49.810001 30.084999 0.000000
+v 49.810001 -30.084999 0.000000
+v -49.810001 -30.084999 0.000000
+# num_vertices: 4
+
+vn 0.000000 0.000000 1.000000
+vn 0.000000 0.000000 1.000000
+vn 0.000000 0.000000 1.000000
+vn 0.000000 0.000000 1.000000
+# num_vertex_normals: 4
+
+vt 1.000000 1.000000
+vt 0.000000 1.000000
+vt 1.000000 0.000000
+vt 0.000000 1.000000
+vt 0.000000 0.000000
+vt 1.000000 0.000000
+# num_uvs: 6
+
+g Untitled
+
+usemtl Untitled
+f 1/1/1 2/2/2 3/3/3 
+f 2/4/2 4/5/4 3/6/3 
+# num_faces: 2
+

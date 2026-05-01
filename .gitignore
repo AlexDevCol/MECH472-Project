@@ -1,7 +1,73 @@
-# Docs inside agent folder (local/private agent context)
+# Local/private agent context
 docs/agent/
 
-# MECH 472 Project — compiler / build output
+# Visual Studio — solution / user state
+.vs/
+**/.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS IntelliSense / browsing DB (large, regenerated)
+*.VC.db
+*.VC.db-shm
+*.VC.db-wal
+*.VC.opendb
+**/Browse.VC.db*
+**/FileContentIndex/
+
+# Precompiled headers / incremental scan
+**/ipch/
+*.pch
+
+# Build output folders (any depth)
+**/Bin/
+**/bin/
+**/Debug/
+**/Release/
+**/x64/
+**/x86/
+**/Win32/
+**/ARM/
+**/ARM64/
+**/obj/
+**/out/
+**/Generated Files/
+
+# MSBuild / linker / compiler artifacts (not vendored third-party libs)
+*.obj
+*.iobj
+*.pdb
+*.ipdb
+*.ilk
+*.idb
+*.exp
+*.aps
+*.ncb
+*.opendb
+*.cache
+
+# Build logs / trace (under project trees)
+**/*.tlog/
+*.lastbuildstate
+*.recipe
+*_manifest.rc
+*.res
+*.embed.manifest
+
+# Executables produced by your builds (tracked libs like *.lib stay allowed)
+**/Bin/**/*.exe
+**/bin/**/*.exe
+**/Debug/**/*.exe
+**/Release/**/*.exe
+**/x64/**/*.exe
+**/x86/**/*.exe
+
+# NuGet / packages (if used later)
+**/packages/
+
+# MECH 472 Project — legacy explicit paths (redundant with globs above; kept for clarity)
 src/MECH 472 Project/x64/
 src/MECH 472 Project/.vs/
 src/MECH 472 Project/MECH 472 Project/

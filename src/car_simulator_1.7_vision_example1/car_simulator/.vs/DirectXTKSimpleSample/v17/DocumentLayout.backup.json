@@ -1,12 +1,37 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\JR-Alejo\\Documents\\Concordia\\Winter 2026\\MECH 472\\Material Recap\\Week 12\\car_simulator_1.7_vision_example1\\car_simulator\\",
-  "Documents": [],
+  "WorkspaceRootPath": "C:\\Users\\JR-Alejo\\Desktop\\MECH472-Project\\src\\car_simulator_1.7_vision_example1\\car_simulator\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{2C4F0429-5ADF-4DFB-A21B-15635BE732F2}|DirectXTKSimpleSample.vcxproj|C:\\Users\\JR-Alejo\\Desktop\\MECH472-Project\\src\\car_simulator_1.7_vision_example1\\car_simulator\\draw_3D_graphics.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{2C4F0429-5ADF-4DFB-A21B-15635BE732F2}|DirectXTKSimpleSample.vcxproj|solutionrelative:draw_3D_graphics.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "draw_3D_graphics.cpp",
+              "DocumentMoniker": "C:\\Users\\JR-Alejo\\Desktop\\MECH472-Project\\src\\car_simulator_1.7_vision_example1\\car_simulator\\draw_3D_graphics.cpp",
+              "RelativeDocumentMoniker": "draw_3D_graphics.cpp",
+              "ToolTip": "C:\\Users\\JR-Alejo\\Desktop\\MECH472-Project\\src\\car_simulator_1.7_vision_example1\\car_simulator\\draw_3D_graphics.cpp",
+              "RelativeToolTip": "draw_3D_graphics.cpp",
+              "ViewState": "AgIAAI8BAAAAAAAAAADwvw8AAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-05-01T18:28:01.227Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }

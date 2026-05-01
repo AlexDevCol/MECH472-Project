@@ -209,17 +209,23 @@ xcopy /y /d "$(ProjectDir)robot_B.bmp" "$(OutDir)"</Command>
     <ClCompile Include="draw_3D_graphics.cpp" />
     <ClCompile Include="graphics.cpp" />
     <ClCompile Include="image_transfer7.cpp" />
+    <ClCompile Include="my_functions.cpp" />
     <ClCompile Include="ran.cpp" />
     <ClCompile Include="ran2.cpp" />
     <ClCompile Include="ran3.cpp" />
     <ClCompile Include="robot.cpp" />
     <ClCompile Include="rotation.cpp" />
     <ClCompile Include="timer.cpp" />
+    <ClCompile Include="vision.cpp" />
     <ClCompile Include="world.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="3D_graphics.lib" />
     <Library Include="DirectXTK.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="my_functions.h" />
+    <ClInclude Include="vision.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
